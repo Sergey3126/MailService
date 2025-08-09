@@ -39,11 +39,13 @@ import org.springframework.web.client.RestTemplate;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class MailService implements IMailService {
@@ -58,7 +60,13 @@ public class MailService implements IMailService {
     private RestTemplate restTemplate = new RestTemplate();
     private LocalDateTime localDateTime = LocalDateTime.now();
 
-
+    //ссылка для доступа к категории
+    @Value("${operation_category_url}")
+    private String categoryUrl;
+    //ссылка для доступа к счету
+    @Value("${account_url}")
+    private String accountUrl;
+    //ссылка для доступа к отчетам
     @Value("${report_url}")
     private String reportUrl;
 
@@ -76,7 +84,7 @@ public class MailService implements IMailService {
         Accounts account = new Accounts();
 
         // Проверяем, что обязательное поле не пусто
-        if (paramsRaw.getAccounts() == null && paramsRaw.getMail() == null) {
+        if (paramsRaw.getAccounts() == null || paramsRaw.getMail() == null) {
             throw new ValidationException(MessageError.EMPTY_LINE);
         }
 
@@ -86,6 +94,9 @@ public class MailService implements IMailService {
             reportDataRaw.setUuid(UUID.randomUUID());
             reportDataRaw.setType(Type.valueOf(type));
             reportDataRaw.setStatus(Status.LOADED);
+
+            checkAccessibility(accountUrl, paramsRaw.getAccounts());
+
             //сохраняет переданные счета
             for (int i = 0; i < paramsRaw.getAccounts().size(); i++) {
                 //создает ReportUuid, Account, Uuid и сохраняет
@@ -109,6 +120,9 @@ public class MailService implements IMailService {
                     throw new ValidationException(MessageError.EMPTY_LINE);
                 }
                 Category category = new Category();
+
+                checkAccessibility(categoryUrl, paramsRaw.getCategory());
+
                 //создает ReportUuid, Category, Uuid и сохраняет
                 for (int i = 0; i < paramsRaw.getCategory().size(); i++) {
                     category.setUuid(UUID.randomUUID());
@@ -142,43 +156,43 @@ public class MailService implements IMailService {
                 Duration difference = Duration.between(reportData.getFromDate(), reportData.getToDate());
                 long secondsDifference = difference.getSeconds();
                 //Проверка, что отчет не раньше рамок
-                if (!localDateTime.isAfter(reportData.getToDate())) {
-                    break;
-                }
-                //Получение листов категорий и счетов
-                List<AccountsEntity> accountsEntityList = accountStorage.findByReportUuid(reportData.getUuid());
-                List<UUID> accountsList = new ArrayList<>();
-                for (int j = 0; j < accountsEntityList.size(); j++) {
-                    Accounts accounts = conversionService.convert(accountsEntityList.get(j), Accounts.class);
-                    accountsList.add(accounts.getAccount());
-                }
-                List<CategoryEntity> categoryEntityList = categoryStorage.findByReportUuid(reportData.getUuid());
-                List<UUID> categoryList = new ArrayList<>();
-                for (int j = 0; j < categoryEntityList.size(); j++) {
-                    Category category = conversionService.convert(categoryEntityList.get(j), Category.class);
-                    categoryList.add(category.getCategory());
-                }
-                //Сохранение и передача счетов, категорий, дат
-                paramsRaw.setCategory(categoryList);
-                paramsRaw.setAccounts(accountsList);
-                paramsRaw.setFrom(reportData.getFromDate());
-                paramsRaw.setTo(reportData.getToDate());
+                if (localDateTime.isAfter(reportData.getToDate())) {
 
-                //создание отчета
-                String jsonParams = objectMapper.writeValueAsString(paramsRaw);
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.APPLICATION_JSON);
-                HttpEntity<String> reportStr = new HttpEntity<>(jsonParams, headers);
-                ResponseEntity<Report> response = restTemplate.postForEntity(reportUrl + "report/" + reportData.getType(), reportStr, Report.class);
-                Report report = response.getBody();
-                reportData.setReportUuid(report.getUuid());
-                reportData.setStatus(Status.PROGRESS);
+                    //Получение листов категорий и счетов
+                    List<AccountsEntity> accountsEntityList = accountStorage.findByReportUuid(reportData.getUuid());
+                    List<UUID> accountsList = new ArrayList<>();
+                    for (int j = 0; j < accountsEntityList.size(); j++) {
+                        Accounts accounts = conversionService.convert(accountsEntityList.get(j), Accounts.class);
+                        accountsList.add(accounts.getAccount());
+                    }
+                    List<CategoryEntity> categoryEntityList = categoryStorage.findByReportUuid(reportData.getUuid());
+                    List<UUID> categoryList = new ArrayList<>();
+                    for (int j = 0; j < categoryEntityList.size(); j++) {
+                        Category category = conversionService.convert(categoryEntityList.get(j), Category.class);
+                        categoryList.add(category.getCategory());
+                    }
+                    //Сохранение и передача счетов, категорий, дат
+                    paramsRaw.setCategory(categoryList);
+                    paramsRaw.setAccounts(accountsList);
+                    paramsRaw.setFrom(reportData.getFromDate());
+                    paramsRaw.setTo(reportData.getToDate());
 
-                //сохранение дат для следуещего раза
-                reportData.setFromDate(reportData.getFromDate().plusSeconds(secondsDifference));
-                reportData.setToDate(reportData.getToDate().plusSeconds(secondsDifference));
-                reportStorage.save(conversionService.convert(reportData, ReportDataEntity.class));
+                    //создание отчета
+                    String jsonParams = objectMapper.writeValueAsString(paramsRaw);
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.setContentType(MediaType.APPLICATION_JSON);
+                    HttpEntity<String> reportStr = new HttpEntity<>(jsonParams, headers);
+                    ResponseEntity<Report> response = restTemplate.postForEntity(reportUrl + "report/" + reportData.getType(), reportStr, Report.class);
+                    Report report = response.getBody();
+                    reportData.setReportUuid(report.getUuid());
+                    reportData.setStatus(Status.PROGRESS);
 
+                    //сохранение дат для следуещего раза
+                    reportData.setFromDate(reportData.getFromDate().plusSeconds(secondsDifference));
+                    reportData.setToDate(reportData.getToDate().plusSeconds(secondsDifference));
+                    reportStorage.save(conversionService.convert(reportData, ReportDataEntity.class));
+
+                }
             }
         } catch (IOException e) {
             reportData.setStatus(Status.ERROR);
@@ -308,12 +322,29 @@ public class MailService implements IMailService {
                 reportStorage.save(conversionService.convert(reportData, ReportDataEntity.class));
 
             } catch (MessagingException e) {
-                throw new ValidationException(MessageError.SENDING_ERROR);
+                reportData.setStatus(Status.ERROR);
+                reportStorage.save(conversionService.convert(reportData, ReportDataEntity.class));
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                reportData.setStatus(Status.ERROR);
+                reportStorage.save(conversionService.convert(reportData, ReportDataEntity.class));
+
             }
         }
 
+    }
+
+    //проверят доступность
+    private void checkAccessibility(String url, List<UUID> uuidList) {
+        for (int i = 0; i < uuidList.size(); i++) {
+            try (InputStream stream = new URL(url + uuidList.get(i).toString()).openStream()) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
+                String str = reader.lines().collect(Collectors.joining("\n"));
+            } catch (IOException e) {
+
+                throw new ValidationException(MessageError.INCORRECT_UUID);
+
+            }
+        }
     }
 
 
