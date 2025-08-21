@@ -15,14 +15,8 @@ public class ReportData {
     private UUID reportUuid;
     private Status status;
     private String mail;
-
-    public UUID getUuid() {
-        return uuid;
-    }
-
-    public void setUuid(UUID uuid) {
-        this.uuid = uuid;
-    }
+    private String nick;
+    private String key;
 
     @Override
     public String toString() {
@@ -34,7 +28,33 @@ public class ReportData {
                 ", reportUuid=" + reportUuid +
                 ", status=" + status +
                 ", mail='" + mail + '\'' +
+                ", nick='" + nick + '\'' +
+                ", key='" + key + '\'' +
                 '}';
+    }
+
+    public String getNick() {
+        return nick;
+    }
+
+    public void setNick(String nick) {
+        this.nick = nick;
+    }
+
+    public String getKey() {
+        return key;
+    }
+
+    public void setKey(String key) {
+        this.key = key;
+    }
+
+    public UUID getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(UUID uuid) {
+        this.uuid = uuid;
     }
 
     public Status getStatus() {
@@ -85,14 +105,16 @@ public class ReportData {
         this.mail = mail;
     }
 
-    public ReportData(UUID uuid, Type type, LocalDateTime fromDate, LocalDateTime toDate, UUID reportUuid, Status status, String mail) {
+    public ReportData(UUID uuid, Type type, LocalDateTime fromDate, LocalDateTime toDate, UUID reportUuid, String mail, Status status, String key, String nick) {
         this.uuid = uuid;
         this.type = type;
         this.fromDate = fromDate;
         this.toDate = toDate;
         this.reportUuid = reportUuid;
-        this.status = status;
         this.mail = mail;
+        this.status = status;
+        this.key = key;
+        this.nick = nick;
     }
 
     public ReportData() {

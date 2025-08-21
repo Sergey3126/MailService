@@ -19,3 +19,7 @@ server:
 report_url: http://localhost:8082/api/v1/
 account_url: http://localhost:8080/api/v1/account/
 operation_category_url: http://localhost:8081/api/v1/classifier/operation/category/
+encryption_url: http://localhost:8084/api/v1/encryption/
+
+service_email: a76961048@gmail.com
+service_password: vgwp trxh hnhy amkc

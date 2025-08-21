@@ -16,6 +16,40 @@ public class Report {
     private Type type;
     private LocalDateTime fromDate;
     private LocalDateTime toDate;
+    private String nick;
+    private String key;
+
+    @Override
+    public String toString() {
+        return "Report{" +
+                "uuid=" + uuid +
+                ", dtCreate=" + dtCreate +
+                ", dtUpdate=" + dtUpdate +
+                ", status=" + status +
+                ", description='" + description + '\'' +
+                ", type=" + type +
+                ", fromDate=" + fromDate +
+                ", toDate=" + toDate +
+                ", nick='" + nick + '\'' +
+                ", key='" + key + '\'' +
+                '}';
+    }
+
+    public String getNick() {
+        return nick;
+    }
+
+    public void setNick(String nick) {
+        this.nick = nick;
+    }
+
+    public String getKey() {
+        return key;
+    }
+
+    public void setKey(String key) {
+        this.key = key;
+    }
 
     public UUID getUuid() {
         return uuid;
@@ -81,29 +115,17 @@ public class Report {
         this.toDate = toDate;
     }
 
-    @Override
-    public String toString() {
-        return "Report{" +
-                "uuid=" + uuid +
-                ", dtCreate=" + dtCreate +
-                ", dtUpdate=" + dtUpdate +
-                ", status=" + status +
-                ", description='" + description + '\'' +
-                ", type=" + type +
-                ", from=" + fromDate +
-                ", to=" + toDate +
-                '}';
-    }
-
-    public Report(UUID uuid, LocalDateTime dtCreate, LocalDateTime dtUpdate, Status status, String description, Type type, LocalDateTime from, LocalDateTime to) {
+    public Report(UUID uuid, LocalDateTime dtCreate, LocalDateTime dtUpdate, Status status, String description, Type type, LocalDateTime fromDate, String nick, LocalDateTime toDate, String key) {
         this.uuid = uuid;
         this.dtCreate = dtCreate;
         this.dtUpdate = dtUpdate;
         this.status = status;
         this.description = description;
         this.type = type;
-        this.fromDate = from;
-        this.toDate = to;
+        this.fromDate = fromDate;
+        this.nick = nick;
+        this.toDate = toDate;
+        this.key = key;
     }
 
     public Report() {

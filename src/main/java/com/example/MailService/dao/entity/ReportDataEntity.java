@@ -19,6 +19,52 @@ public class ReportDataEntity {
     private UUID reportUuid;
     private String status;
     private String mail;
+    private String nick;
+    private String key;
+
+    @Override
+    public String toString() {
+        return "ReportDataEntity{" +
+                "uuid=" + uuid +
+                ", type='" + type + '\'' +
+                ", fromDate=" + fromDate +
+                ", toDate=" + toDate +
+                ", reportUuid=" + reportUuid +
+                ", status='" + status + '\'' +
+                ", mail='" + mail + '\'' +
+                ", nick='" + nick + '\'' +
+                ", key='" + key + '\'' +
+                '}';
+    }
+
+
+    public String getNick() {
+        return nick;
+    }
+
+    public void setNick(String nick) {
+        this.nick = nick;
+    }
+
+    public ReportDataEntity(UUID uuid, String type, LocalDateTime fromDate, LocalDateTime toDate, UUID reportUuid, String status, String mail, String nick, String key) {
+        this.uuid = uuid;
+        this.type = type;
+        this.fromDate = fromDate;
+        this.toDate = toDate;
+        this.reportUuid = reportUuid;
+        this.status = status;
+        this.mail = mail;
+        this.nick = nick;
+        this.key = key;
+    }
+
+    public String getKey() {
+        return key;
+    }
+
+    public void setKey(String key) {
+        this.key = key;
+    }
 
     public UUID getUuid() {
         return uuid;
@@ -76,28 +122,6 @@ public class ReportDataEntity {
         this.mail = mail;
     }
 
-    @Override
-    public String toString() {
-        return "ReportDataEntity{" +
-                "uuid=" + uuid +
-                ", type='" + type + '\'' +
-                ", fromDate=" + fromDate +
-                ", toDate=" + toDate +
-                ", reportUuid=" + reportUuid +
-                ", status='" + status + '\'' +
-                ", mail='" + mail + '\'' +
-                '}';
-    }
-
-    public ReportDataEntity(UUID uuid, String type, LocalDateTime toDate, LocalDateTime fromDate, UUID reportUuid, String status, String mail) {
-        this.uuid = uuid;
-        this.type = type;
-        this.toDate = toDate;
-        this.fromDate = fromDate;
-        this.reportUuid = reportUuid;
-        this.status = status;
-        this.mail = mail;
-    }
 
     public ReportDataEntity() {
     }

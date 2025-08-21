@@ -11,9 +11,10 @@ public final class MessageError {
 
     public static final String EMPTY_LINE = "Пустая строка";
 
-    public static final String FAIL_DOWNLOAD= "Не удалось скачать файл";
 
-    public static final String SENDING_ERROR = "Ошибка при отправке";
+
+    public static final String INCORRECT_TOKEN = "Неверный token";
+
 
     public static final String INCORRECT_UUID = "Неверный uuid";
 }

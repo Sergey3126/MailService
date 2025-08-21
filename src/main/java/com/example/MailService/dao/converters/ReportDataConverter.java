@@ -20,6 +20,8 @@ public class ReportDataConverter implements Converter<ReportDataEntity, ReportDa
         reportData.setReportUuid(source.getReportUuid());
         reportData.setStatus(Status.valueOf(source.getStatus()));
         reportData.setMail(source.getMail());
+        reportData.setNick(source.getNick());
+        reportData.setKey(source.getKey());
         return reportData;
     }
 

@@ -10,6 +10,37 @@ public class Params {
     private LocalDateTime from;
     private LocalDateTime to;
     private String mail;
+    private String nick;
+    private String key;
+
+    @Override
+    public String toString() {
+        return "Params{" +
+                "accounts=" + accounts +
+                ", category=" + category +
+                ", from=" + from +
+                ", to=" + to +
+                ", mail='" + mail + '\'' +
+                ", nick='" + nick + '\'' +
+                ", key='" + key + '\'' +
+                '}';
+    }
+
+    public String getNick() {
+        return nick;
+    }
+
+    public void setNick(String nick) {
+        this.nick = nick;
+    }
+
+    public String getKey() {
+        return key;
+    }
+
+    public void setKey(String key) {
+        this.key = key;
+    }
 
     public String getMail() {
         return mail;
@@ -51,23 +82,14 @@ public class Params {
         this.to = to;
     }
 
-    public Params(List<UUID> category, List<UUID> account, LocalDateTime from, LocalDateTime to, String mail) {
+    public Params(List<UUID> accounts, List<UUID> category, LocalDateTime from, LocalDateTime to, String mail, String nick, String key) {
+        this.accounts = accounts;
         this.category = category;
-        this.accounts = account;
         this.from = from;
         this.to = to;
         this.mail = mail;
-    }
-
-    @Override
-    public String toString() {
-        return "Params{" +
-                "accounts=" + accounts +
-                ", category=" + category +
-                ", from=" + from +
-                ", to=" + to +
-                ", mail='" + mail + '\'' +
-                '}';
+        this.nick = nick;
+        this.key = key;
     }
 
     public Params() {

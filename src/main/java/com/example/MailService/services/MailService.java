@@ -53,13 +53,18 @@ public class MailService implements IMailService {
     private final IAccountStorage accountStorage;
     private final ICategoryStorage categoryStorage;
     private final ConversionService conversionService;
-    private final String SERVICE_EMAIL = "a76961048@gmail.com"; // Отправитель
-    private final String SERVICE_PASSWORD = "vgwp trxh hnhy amkc"; //пароль от a76961048@gmail.com
 
     private ObjectMapper objectMapper = new ObjectMapper();
     private RestTemplate restTemplate = new RestTemplate();
     private LocalDateTime localDateTime = LocalDateTime.now();
 
+
+    //почта отправки
+    @Value("${service_email}")
+    private String email;
+    //пароль почты
+    @Value("${service_password}")
+    private String password;
     //ссылка для доступа к категории
     @Value("${operation_category_url}")
     private String categoryUrl;
@@ -69,6 +74,9 @@ public class MailService implements IMailService {
     //ссылка для доступа к отчетам
     @Value("${report_url}")
     private String reportUrl;
+    //ссылка для доступа к шифровке
+    @Value("${encryption_url}")
+    private String encryptionUrl;
 
     public MailService(IReportDataStorage reportStorage, IAccountStorage accountStorage, ICategoryStorage categoryStorage, ConversionService conversionService) {
         this.reportStorage = reportStorage;
@@ -82,20 +90,25 @@ public class MailService implements IMailService {
 
         ReportData reportDataRaw = new ReportData();
         Accounts account = new Accounts();
-
+        User user = new User();
+        user.setKey(paramsRaw.getKey());
+        user.setNick(paramsRaw.getNick());
+        checkKey(user);
         // Проверяем, что обязательное поле не пусто
         if (paramsRaw.getAccounts() == null || paramsRaw.getMail() == null) {
             throw new ValidationException(MessageError.EMPTY_LINE);
         }
 
         try {
-            //создает Uuid, AccountUuid и сохраняет Status, Mail и Type
+            //создает Uuid, AccountUuid и сохраняет Status, Key, Nick, Mail и Type
             reportDataRaw.setMail(paramsRaw.getMail());
             reportDataRaw.setUuid(UUID.randomUUID());
             reportDataRaw.setType(Type.valueOf(type));
             reportDataRaw.setStatus(Status.LOADED);
+            reportDataRaw.setKey(paramsRaw.getKey());
+            reportDataRaw.setNick(paramsRaw.getNick());
 
-            checkAccessibility(accountUrl, paramsRaw.getAccounts());
+            checkAccessibility(accountUrl, paramsRaw.getAccounts(), user);
 
             //сохраняет переданные счета
             for (int i = 0; i < paramsRaw.getAccounts().size(); i++) {
@@ -121,7 +134,7 @@ public class MailService implements IMailService {
                 }
                 Category category = new Category();
 
-                checkAccessibility(categoryUrl, paramsRaw.getCategory());
+                checkAccessibility(categoryUrl, paramsRaw.getCategory(), user);
 
                 //создает ReportUuid, Category, Uuid и сохраняет
                 for (int i = 0; i < paramsRaw.getCategory().size(); i++) {
@@ -176,7 +189,8 @@ public class MailService implements IMailService {
                     paramsRaw.setAccounts(accountsList);
                     paramsRaw.setFrom(reportData.getFromDate());
                     paramsRaw.setTo(reportData.getToDate());
-
+                    paramsRaw.setKey(reportData.getKey());
+                    paramsRaw.setNick(reportData.getNick());
                     //создание отчета
                     String jsonParams = objectMapper.writeValueAsString(paramsRaw);
                     HttpHeaders headers = new HttpHeaders();
@@ -210,12 +224,24 @@ public class MailService implements IMailService {
             List<ReportDataEntity> reportDataEntityList = reportStorage.findByStatus(Status.PROGRESS.toString());
             for (int i = 0; i < reportDataEntityList.size(); i++) {
                 reportData = conversionService.convert(reportDataEntityList.get(i), ReportData.class);
+
+                User user = new User();
+                user.setKey(reportData.getKey());
+                user.setNick(reportData.getNick());
                 //получение статуса
-                URL url = new URL(reportUrl + "account/" + reportData.getReportUuid() + "/export");
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("HEAD");
-                int statusCode = connection.getResponseCode();
-                connection.disconnect();
+                String jsonUser = objectMapper.writeValueAsString(user);
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                HttpEntity<String> str = new HttpEntity<>(jsonUser, headers);
+                ResponseEntity<Integer> response = restTemplate.postForEntity(reportUrl + "account/" + reportData.getReportUuid() + "/export", str, int.class);
+                int statusCode = response.getBody();
+
+
+                // URL url = new URL(reportUrl + "account/" + reportData.getReportUuid() + "/export");
+                // HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                // connection.setRequestMethod("HEAD");
+                // int statusCode = connection.getResponseCode();
+                // connection.disconnect();
                 switch (statusCode) {
                     case 200:
                         reportData.setStatus(Status.DONE);
@@ -271,41 +297,54 @@ public class MailService implements IMailService {
             // Создаем сессию
             Session session = Session.getInstance(properties, new Authenticator() {
                 protected PasswordAuthentication getPasswordAuthentication() {
-                    return new PasswordAuthentication(SERVICE_EMAIL, SERVICE_PASSWORD);
+                    return new PasswordAuthentication(email, password);
                 }
             });
 
             try {
                 //Создаем письмо
                 MimeMessage message = new MimeMessage(session);
-                message.setFrom(new InternetAddress(SERVICE_EMAIL));
+                message.setFrom(new InternetAddress(email));
                 message.addRecipient(Message.RecipientType.TO, new InternetAddress(to));
                 message.setSubject(subject);
                 MimeBodyPart textPart = new MimeBodyPart();
                 textPart.setText(body);
                 MimeBodyPart attachmentPart = new MimeBodyPart();
-                //Получение готового отчета
-                URL url = new URL(reportUrl + "account/" + reportData.getReportUuid() + "/export");
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("GET");
-                byte[] excelData;
 
-                try (InputStream inputStream = connection.getInputStream();
-                     ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+                User user = new User();
+                user.setKey(reportData.getKey());
+                user.setNick(reportData.getNick());
 
-                    byte[] buffer = new byte[4096];
-                    int bytesRead;
-                    while ((bytesRead = inputStream.read(buffer)) != -1) {
-                        outputStream.write(buffer, 0, bytesRead);
-                    }
 
-                    excelData = outputStream.toByteArray();
+                String jsonUser = objectMapper.writeValueAsString(user);
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                HttpEntity<String> str = new HttpEntity<>(jsonUser, headers);
+                ResponseEntity<byte[]> response = restTemplate.postForEntity(reportUrl + "account/" + reportData.getReportUuid() + "/export", str, byte[].class);
+                byte[] excelData = response.getBody();
 
-                } catch (IOException e) {
-                    throw new ValidationException(MessageError.FAIL_DOWNLOAD);
-                } finally {
-                    connection.disconnect();
-                }
+                // //Получение готового отчета
+                // URL url = new URL(reportUrl + "account/" + reportData.getReportUuid() + "/export");
+                // HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                // connection.setRequestMethod("GET");
+                // byte[] excelData;
+
+                // try (InputStream inputStream = connection.getInputStream();
+                //      ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+
+                //     byte[] buffer = new byte[4096];
+                //     int bytesRead;
+                //     while ((bytesRead = inputStream.read(buffer)) != -1) {
+                //         outputStream.write(buffer, 0, bytesRead);
+                //     }
+
+                //     excelData = outputStream.toByteArray();
+
+                // } catch (IOException e) {
+                //     throw new ValidationException(MessageError.FAIL_DOWNLOAD);
+                // } finally {
+                //     connection.disconnect();
+                // }
 
                 DataSource dataSource = new ByteArrayDataSource(excelData, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
                 attachmentPart.setDataHandler(new DataHandler(dataSource));
@@ -334,11 +373,14 @@ public class MailService implements IMailService {
     }
 
     //проверят доступность
-    private void checkAccessibility(String url, List<UUID> uuidList) {
+    private void checkAccessibility(String url, List<UUID> uuidList, User user) {
         for (int i = 0; i < uuidList.size(); i++) {
-            try (InputStream stream = new URL(url + uuidList.get(i).toString()).openStream()) {
-                BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
-                String str = reader.lines().collect(Collectors.joining("\n"));
+            try {
+                String jsonUser = objectMapper.writeValueAsString(user);
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                HttpEntity<String> str = new HttpEntity<>(jsonUser, headers);
+                ResponseEntity<String> response = restTemplate.postForEntity(url + "check", str, String.class);
             } catch (IOException e) {
 
                 throw new ValidationException(MessageError.INCORRECT_UUID);
@@ -347,5 +389,26 @@ public class MailService implements IMailService {
         }
     }
 
+    //проверка авторизации
+    private void checkKey(User user) {
+        // Проверяем, что обязательные поля не пусты
+        if (user.getNick() == null || user.getKey() == null) {
+            throw new ValidationException(MessageError.EMPTY_LINE);
+        }
+        try {
+            //получаем совпадает ли токен
+            String jsonUser = objectMapper.writeValueAsString(user);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<String> str = new HttpEntity<>(jsonUser, headers);
+            ResponseEntity<Boolean> response = restTemplate.postForEntity(encryptionUrl + "check", str, boolean.class);
+            boolean bool = response.getBody();
 
+            if (!bool) {
+                throw new ValidationException(MessageError.INCORRECT_TOKEN);
+            }
+        } catch (IOException e) {
+            throw new ValidationException(MessageError.INCORRECT_UUID);
+        }
+    }
 }
